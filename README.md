@@ -8,4 +8,6 @@ Tasks:
 6) Calc momentum if in search circle (30 degrees in general movement).
 8) Change circles to sector.
 9) Write postion  diagram.
+10) Indicator that the script has started searching.
+11) TIme counter for the search path.
 אדsad2d
