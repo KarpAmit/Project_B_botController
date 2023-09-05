@@ -1,9 +1,11 @@
 import pygame
 import numpy as np
 from queue import PriorityQueue
+import time
 
-ROWS = 20
+ROWS = 50
 WIDTH = 800
+show_open_close = True
 WIN = pygame.display.set_mode((WIDTH, WIDTH))
 pygame.display.set_caption("A* Path Finding Algorithm")
 
@@ -139,16 +141,19 @@ class Spot:
         self.color = WHITE
 
     def make_start(self, robot_color):
-        print("in start " + str(robot_color.start_color))
+        #print("in start " + str(robot_color.start_color))
         self.color = robot_color.start_color
+        #30.0
 
     def make_closed(self):
         self.close.append(self.get_pos())
-        #self.color = RED
+        if show_open_close:
+            self.color = RED
 
     def make_open(self):
         self.open.append(self.get_pos())
-        #self.color = GREEN
+        if show_open_close:
+            self.color = GREEN
 
     def make_barrier(self):
         self.color = BLACK
@@ -157,7 +162,7 @@ class Spot:
         self.color = robot_color.stop_color
 
     def make_path(self, robot_color):
-        print("in path " + str(robot_color.path_color))
+        print("my color is:= " + str(self.color) + " in path " + str(robot_color.path_color))
         self.color = robot_color.path_color
 
     def draw(self, win):
@@ -202,15 +207,18 @@ def on_board(x):
 
 def reconstruct_path(came_from, current, draw, Robot):
     path = []
+    new_path = []
     while current in came_from:
     #while current in Robot.path:
         current = came_from[current]
         #current = current.reverse()
         #current.make_path(Robot.color_index)
         path.append(current)
-    for current in reversed(path[1:]):
+    for current in reversed(path[:-1]):
+        new_path.append(current)
         current.make_path(Robot.color_index)
         draw()
+    Robot.path = new_path
 
 
 def algorithm(draw, grid, Robot):
@@ -291,6 +299,17 @@ def draw(win, grid, rows, width):
     draw_grid(win, rows, width)
     pygame.display.update()
 
+def draw_blank(win, grid, rows, width):
+    win.fill(WHITE)
+
+    for row in grid:
+        for spot in row:
+            spot.color = WHITE
+            spot.draw(win)
+    #def draw(self, win)
+    #draw_grid(win, rows, width)
+    pygame.display.update()
+
 
 def get_clicked_pos(pos, rows, width):
     gap = width // rows
@@ -315,6 +334,7 @@ def main(win, width):
     start_end = True
     run = True
     show_rad = False
+
     while run:
         draw(win, grid, ROWS, width)
         for event in pygame.event.get():
@@ -356,11 +376,16 @@ def main(win, width):
             if event.type == pygame.KEYDOWN:
                 for i in range(robot_index):
                     if event.key == pygame.K_SPACE: #and robot_start_array[i] and robot_end_array[i]:
+                        print("Start calculating path")
+                        start_time = time.time()
                         for row in grid:
                             for spot in row:
                                 spot.update_neighbors(grid)
 
                         algorithm(lambda: draw(win, grid, ROWS, width), grid, Robot_List[i])
+                        end_time = time.time()
+                        elapsed_time = end_time - start_time
+                        print(f"Elapsed time: {elapsed_time} seconds, for robot number: {i}/{robot_index-1}")
 
                     if event.key == pygame.K_c:
                         mid_click = False
@@ -377,7 +402,17 @@ def main(win, width):
                                     spot = Spot(spot[0],spot[1], width, ROWS, robot)
                                     spot.draw_impact_circle(robot.color_index)
 
-
+                    if event.key == pygame.K_s:
+                        print("key S")
+                        draw_blank(win, grid, width, ROWS)
+                        for robot in Robot_List:
+                            #print(len(Robot_List))
+                            #print(robot.path)
+                            for spot in robot.path:
+                                print(spot.get_pos()[0], spot.get_pos()[1])
+                                spot = Spot(spot.get_pos()[0], spot.get_pos()[1], width, ROWS, robot)
+                                spot.make_path(robot.color_index)
+                            draw(win, grid, ROWS, width)
     pygame.quit()
 
 
