@@ -2,6 +2,7 @@ import pygame
 import numpy as np
 from queue import PriorityQueue
 import time
+import probability as prob
 
 ROWS = 20
 WIDTH = 800
@@ -149,6 +150,8 @@ class Robot:
                 for i, spot_hist in enumerate(lookat_list):
                     if spot.color == spot_hist.color:
                         spot_hist.points.append(spot)
+                        #get_prob = prob([0.5, 0.1, 0.2] , calc_grad(spot_hist.points), spot_hist, 3)
+                        #get_prob.
                         print(f"robot_number: {self.priority} saw a robot go: {calc_grad(spot_hist.points)}")
                         lookat_list[i] = spot_hist
                         res = lookat_list
