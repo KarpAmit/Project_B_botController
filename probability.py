@@ -3,13 +3,16 @@ from collections import deque
 import numpy as np
 
 class probability:
-    def __init__(self, prob=[0.5, 0.1, 0.2], first_movement='up', starting_point=(10, 10),  turns_number= 5):
+    def __init__(self, prob=[0, 0, 0], first_movement='', starting_point=(0, 0),  turns_number=1):
         self.forward = prob[0]
         self.backward = prob[1]
         self.sideways = prob[2]
         self.first_movement = first_movement
         self.starting_point = starting_point
         self.turns_number = turns_number
+        self.next_turns_array = self.calc_prob(self.first_movement, self.generate_grid(self.starting_point, self.turns_number), self.turns_number)
+        self.next_turns_array[self.starting_point[0]][self.starting_point[1]][0] = 1
+
 
     def generate_grid(self, player_position, num_turns):
         grid = [[{} for _ in range(20)] for _ in range(20)]
@@ -37,13 +40,16 @@ class probability:
         return grid
 
     # Printing the grid
-    def print_grid(self, grid):
-        for i in range(20):
-            for j in range(20):
-                print(f"Position ({i}, {j}):")
-                for turn, paths in grid[i][j].items():
-                    print(f"Turn {turn}: {paths}")
-                print()
+    def print_grid(self):
+        turns_number = self.next_turns_array.shape[2]
+        for turn in range(turns_number):
+            print(f"Turn {turn}:")
+            for i in range(20):
+                row = ""
+                for j in range(20):
+                    row += f"{self.next_turns_array[i][j][turn]:<8}"  # Adjust width as needed
+                print(row)
+            print()
 
     def get_prob(self, last_movement, positions):
         diraction = {
@@ -103,7 +109,7 @@ class probability:
                 for col in range(grid.shape[1]):
                     if grid[row, col, turn] > 0:
                         # Print in green if the value is greater than 0
-                        print("\033[92m{:.2f}\033[0m".format(grid[row, col, turn]), end=" ")
+                        print("{:.2f}".format(grid[row, col, turn]), end=" ")
                     else:
                         # Otherwise, print normally
                         print("{:.2f}".format(grid[row, col, turn]), end=" ")
