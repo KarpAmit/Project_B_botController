@@ -99,6 +99,7 @@ class probability:
     def print_grid_with_colors(self, grid):
         for turn in range(grid.shape[2]):
             print(f"Turn {turn + 1}:")
+            avg = self.get_above_avg(grid,turn)
             for row in range(grid.shape[0]):
                 for col in range(grid.shape[1]):
                     if grid[row, col, turn] > 0:
@@ -109,6 +110,23 @@ class probability:
                         print("{:.2f}".format(grid[row, col, turn]), end=" ")
                 print()  # Newline for next row
             print()  # Empty line for next turn
+
+    def get_above_avg(selfs,grid,turn):
+        count =0
+        to_ret = []
+        for row in range(grid.shape[0]):
+            for col in range(grid.shape[1]):
+                if(grid[row, col, turn] != 0):
+                    count +=1
+        avg = 1/count#The sum of probabilities is 1 so we just need to count the non-zero
+        for row in range(grid.shape[0]):
+            for col in range(grid.shape[1]):
+                if(grid[row, col, turn] >= avg):
+                    to_ret.append([row,col,turn])#Collecting all the cells with probabilities above avg
+        #Those print are for testing, and need to be removed before production
+        print(f"sum if {sum} count is {count} avg is {1/count}")
+        print(f"to_ret is {to_ret}")
+        return to_ret
     def example(self):
         player_position = self.starting_point  # Example player position
         num_turns = self.turns_number
