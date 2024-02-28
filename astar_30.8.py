@@ -2,13 +2,14 @@ import pygame
 import numpy as np
 from queue import PriorityQueue
 import time
-import probability as prob
+from probability import probability
 
 ROWS = 20
 WIDTH = 800
 show_open_close = True
 WIN = pygame.display.set_mode((WIDTH, WIDTH))
 pygame.display.set_caption("A* Path Finding Algorithm")
+SIMULATE = False
 
 RED = (255, 0, 0)
 GREEN = (0, 255, 0)
@@ -39,9 +40,10 @@ TURQUOISE = (64, 224, 208)
 # Array of agent's colors
 
 class points_to_look:
-    def __init__(self, color, points):
+    def __init__(self, color, points, prob):
         self.color = color
         self.points = points
+        self.prob = None
 
 class Color:
     def __init__(self, index, start_color, stop_color, path_color, impact_color, search_color):
@@ -87,6 +89,7 @@ class Robot:
         self.search_collision = []
         self.impact_lookat = []
         self.search_lookat = []
+        self.points_to_avoid = []
 
 
     def fix_circle_points(self, input_list):
@@ -150,17 +153,15 @@ class Robot:
                 for i, spot_hist in enumerate(lookat_list):
                     if spot.color == spot_hist.color:
                         spot_hist.points.append(spot)
-                        #get_prob = prob([0.5, 0.1, 0.2] , calc_grad(spot_hist.points), spot_hist, 3)
-                        #get_prob.
-                        print(f"robot_number: {self.priority} saw a robot go: {calc_grad(spot_hist.points)}")
+                        #print(f"robot_number: {self.priority} saw a robot go: {calc_grad(spot_hist.points)}")
                         lookat_list[i] = spot_hist
                         res = lookat_list
                     else:
                         #print("new point")
-                        res.append(points_to_look(spot.color, [spot]))
+                        res.append(points_to_look(spot.color, [spot], None))
             else:
                 #print("first point")
-                res.append(points_to_look(spot.color, [spot]))
+                res.append(points_to_look(spot.color, [spot], None))
         return res
 
     def __lt__(self, other):
@@ -361,15 +362,15 @@ def calc_grad(points):
     calc_row = last_point.row - sec_to_last_point.row
     calc_col = last_point.col - sec_to_last_point.col
     if calc_row == 1:
-        return "RIGHT"
+        return 'right'
     elif calc_row == -1:
-        return "LEFT"
+        return 'left'
     elif calc_col == 1:
-        return "DOWN"
+        return 'down'
     elif calc_col == -1:
-        return "UP"
+        return 'up'
     elif calc_col == 0 and calc_row == 0:
-        return "STAY"
+        return 'STAY'
     else:
         return "UNKNOWN"
 
@@ -454,6 +455,10 @@ def update_rad(robot):
     robot.impact_collision = robot.check_circle(robot.impact_points)
     #print(f"impact_collision: {robot.impact_collision}")
     robot.impact_lookat = robot.lookat(robot.impact_lookat ,robot.impact_collision)
+    for i, spot in enumerate(robot.impact_lookat):
+        if len(spot.points) > 1:
+            robot.impact_lookat[i].prob = probability([0.5, 0.1, 0.2], calc_grad(spot.points), spot.points[-2].get_pos(), 3)
+
     robot.search_rad_points = robot.generate_circle(robot.curr, robot.search_rad)
     robot.search_points = robot.points_inside_circle(robot.curr, robot.search_rad)
     robot.search_collision = robot.check_circle(robot.search_points)
@@ -471,6 +476,7 @@ def main(win, width):
     start_end = True
     run = True
     show_rad = False
+    SIMULATE = False
     timer_count = 0
     while run:
         draw(win, ROWS, width)
@@ -512,7 +518,9 @@ def main(win, width):
                 elif spot == end:
                     end = None
 
-            if event.type == pygame.KEYDOWN:
+            if event.type == pygame.KEYDOWN or SIMULATE:
+                if SIMULATE:
+                    event.key = pygame.K_g
                 for i in range(robot_index):
                     if event.key == pygame.K_SPACE: #and robot_start_array[i] and robot_end_array[i]:
                         print("Start calculating path")
@@ -555,7 +563,8 @@ def main(win, width):
                                 spot.make_path(robot.color_index)
                             draw(win, ROWS, width)
 
-                if event.key == pygame.K_g:
+                if event.key == pygame.K_g or SIMULATE:
+                    SIMULATE = True
                     draw_blank(win, width, ROWS)
                     for robot in Robot_List:
                         robot.curr = robot.path[0]
@@ -570,6 +579,13 @@ def main(win, width):
                         Spot.make_start(robot.curr, robot.color_index)
                         Spot.make_end(robot.path[-1], robot.color_index)
                         update_rad(robot)
+                        if robot.curr == robot.end:
+                            print(f"Robot {i+1} Ended course")
+                            SIMULATE = False
+                        for target_color in robot.impact_lookat:
+                            if target_color.prob != None:
+                                SIMULATE = False
+                                print(f"Robot {i + 1} Got a robot in his course")
                         if len(robot.path[1:]) > 0:
                             robot.path = robot.path[1:]
 
