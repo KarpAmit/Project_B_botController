@@ -3,7 +3,7 @@ from collections import deque
 import numpy as np
 
 class probability:
-    def __init__(self, prob=[0, 0, 0], first_movement='', starting_point=(0, 0),  turns_number=1):
+    def __init__(self, prob=[0.6, 0.1, 0.15], first_movement='up', starting_point=(10, 10),  turns_number=3,top_percentage=30):
         self.forward = prob[0]
         self.backward = prob[1]
         self.sideways = prob[2]
@@ -12,6 +12,7 @@ class probability:
         self.turns_number = turns_number
         self.next_turns_array = self.calc_prob(self.first_movement, self.generate_grid(self.starting_point, self.turns_number), self.turns_number)
         self.next_turns_array[self.starting_point[0]][self.starting_point[1]][0] = 1
+        self.top_percentage = top_percentage
 
 
     def generate_grid(self, player_position, num_turns):
@@ -105,7 +106,7 @@ class probability:
     def print_grid_with_colors(self, grid):
         for turn in range(grid.shape[2]):
             print(f"Turn {turn + 1}:")
-            avg = self.get_above_avg(grid,turn)
+            top_prob_tiles = self.get_top_percentage(grid,turn)
             for row in range(grid.shape[0]):
                 for col in range(grid.shape[1]):
                     if grid[row, col, turn] > 0:
@@ -117,22 +118,27 @@ class probability:
                 print()  # Newline for next row
             print()  # Empty line for next turn
 
-    def get_above_avg(selfs,grid,turn):
-        count =0
-        to_ret = []
+    def get_top_percentage(self,grid,turn):
+        non_zero = []
         for row in range(grid.shape[0]):
             for col in range(grid.shape[1]):
-                if(grid[row, col, turn] != 0):
-                    count +=1
-        avg = 1/count#The sum of probabilities is 1 so we just need to count the non-zero
-        for row in range(grid.shape[0]):
-            for col in range(grid.shape[1]):
-                if(grid[row, col, turn] >= avg):
-                    to_ret.append([row,col,turn])#Collecting all the cells with probabilities above avg
-        #Those print are for testing, and need to be removed before production
-        print(f"sum if {sum} count is {count} avg is {1/count}")
-        print(f"to_ret is {to_ret}")
-        return to_ret
+                if (grid[row, col, turn] > 0):
+                    non_zero.append([row, col, turn, grid[row, col, turn]])
+        #sorted_probabilities = sorted(non_zero.items(), key=lambda x: x[1], reverse=True)
+        sorted_array = sorted(non_zero, key=lambda x: x[3], reverse=True)
+        num_elements = int(len(sorted_array) * (self.top_percentage / 100))
+        #In case the values in index num_elements-1 and (num_elements) are  equal increse num_elements
+        while num_elements < len(sorted_array):
+            if sorted_array[num_elements -1][-1] == sorted_array[num_elements ][-1]:
+                num_elements += 1
+            else:
+                break
+        top_elements = sorted_array[:num_elements]
+        print(f"\nwe got top {self.top_percentage}% values") #Format [row,col,turn,prob]
+        for iter in top_elements:
+            print(iter)
+        return top_elements
+
     def example(self):
         player_position = self.starting_point  # Example player position
         num_turns = self.turns_number
