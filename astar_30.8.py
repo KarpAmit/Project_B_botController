@@ -39,6 +39,8 @@ TURQUOISE = (64, 224, 208)
 #DARKGOLDENROD = ((184, 134, 11), (255, 185, 15), (238, 173, 14), (205, 149, 12), (139, 101, 8))
 # Array of agent's colors
 
+TOP_PERCENTAGE = 30
+
 class points_to_look:
     def __init__(self, color, points, prob):
         self.color = color
@@ -457,7 +459,7 @@ def update_rad(robot):
     robot.impact_lookat = robot.lookat(robot.impact_lookat ,robot.impact_collision)
     for i, spot in enumerate(robot.impact_lookat):
         if len(spot.points) > 1:
-            robot.impact_lookat[i].prob = probability([0.5, 0.1, 0.2], calc_grad(spot.points), spot.points[-2].get_pos(), 3)
+            robot.impact_lookat[i].prob = probability([0.5, 0.1, 0.2], calc_grad(spot.points), spot.points[-2].get_pos(), 3,TOP_PERCENTAGE)
 
     robot.search_rad_points = robot.generate_circle(robot.curr, robot.search_rad)
     robot.search_points = robot.points_inside_circle(robot.curr, robot.search_rad)
