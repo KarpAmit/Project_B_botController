@@ -10,9 +10,10 @@ class probability:
         self.first_movement = first_movement
         self.starting_point = starting_point
         self.turns_number = turns_number
+        self.top_percentage = top_percentage
         self.next_turns_array = self.calc_prob(self.first_movement, self.generate_grid(self.starting_point, self.turns_number), self.turns_number)
         self.next_turns_array[self.starting_point[0]][self.starting_point[1]][0] = 1
-        self.top_percentage = top_percentage
+        self.blocked_in_future = self.get_top_percentage(self.next_turns_array)
 
 
     def generate_grid(self, player_position, num_turns):
@@ -77,6 +78,12 @@ class probability:
                 'down': self.sideways,
                 'right': self.backward,
                 'left': self.forward
+            },
+            'STAY': {
+                'up': 0.0,
+                'down': 0.0,
+                'right': 0.0,
+                'left': 0.0
             }
         }
         movements = {'(0, -1)': 'left', '(0, 1)': 'right', '(1, 0)': 'down', '(-1, 0)': 'up'}
@@ -118,12 +125,13 @@ class probability:
                 print()  # Newline for next row
             print()  # Empty line for next turn
 
-    def get_top_percentage(self,grid,turn):
+    def get_top_percentage(self,grid):
         non_zero = []
-        for row in range(grid.shape[0]):
-            for col in range(grid.shape[1]):
-                if (grid[row, col, turn] > 0):
-                    non_zero.append([row, col, turn, grid[row, col, turn]])
+        for turn in range(self.turns_number):
+            for row in range(grid.shape[0]):
+                for col in range(grid.shape[1]):
+                    if (grid[row, col, turn] > 0):
+                        non_zero.append([row, col, turn, grid[row, col, turn]])
         #sorted_probabilities = sorted(non_zero.items(), key=lambda x: x[1], reverse=True)
         sorted_array = sorted(non_zero, key=lambda x: x[3], reverse=True)
         num_elements = int(len(sorted_array) * (self.top_percentage / 100))
@@ -134,10 +142,11 @@ class probability:
             else:
                 break
         top_elements = sorted_array[:num_elements]
-        print(f"\nwe got top {self.top_percentage}% values") #Format [row,col,turn,prob]
-        for iter in top_elements:
-            print(iter)
-        return top_elements
+        to_ret = [[] for _ in range(self.turns_number)]
+        for elem in top_elements:
+            turn = elem[2]
+            to_ret[turn].append((elem[0], elem[1]))
+        return to_ret
 
     def example(self):
         player_position = self.starting_point  # Example player position
@@ -158,7 +167,10 @@ class probability:
 #SIDEWAYS = 0.2
 #example()
 prob = probability()
-prob.example()
+#prob.example
+#As we can see we got array of arrays wo that we have[..[row,col,turn]..]
+for iter in prob.blocked_in_future:
+    print(iter)
 print(0)
 
 
