@@ -84,6 +84,12 @@ class probability:
                 'down': 0.0,
                 'right': 0.0,
                 'left': 0.0
+            },
+            'STAY': {
+                'up': 0.0,
+                'down': 0.0,
+                'right': 0.0,
+                'left': 0.0
             }
         }
         movements = {'(0, -1)': 'left', '(0, 1)': 'right', '(1, 0)': 'down', '(-1, 0)': 'up'}
