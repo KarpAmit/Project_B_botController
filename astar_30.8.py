@@ -150,6 +150,8 @@ class Robot:
 
     def lookat(self, lookat_list, search_list):
         res = []
+        print(f"lookat_list: {lookat_list}")
+        print(f"search_list: {search_list}")
         for spot in search_list:
             if len(lookat_list) > 0:
                 for i, spot_hist in enumerate(lookat_list):
@@ -159,10 +161,8 @@ class Robot:
                         lookat_list[i] = spot_hist
                         res = lookat_list
                     else:
-                        #print("new point")
                         res.append(points_to_look(spot.color, [spot], None))
             else:
-                #print("first point")
                 res.append(points_to_look(spot.color, [spot], None))
         return res
 
@@ -218,7 +218,7 @@ class Spot:
         self.color = WHITE
 
     def make_start(self, robot_color):
-        #print("in start " + str(robot_color.start_color) + "pos = " + str(self.get_pos()))
+        print(f"make start {self.row, self.col}")
         self.color = robot_color.start_color
         #30.0
 
@@ -244,6 +244,13 @@ class Spot:
 
     def draw(self, win):
         pygame.draw.rect(win, self.color, (self.x, self.y, self.width, self.width))
+
+    def spot_is_not_free(spot, robot, Robot_List):
+        for other_robot in Robot_List:
+            if other_robot != robot:
+                if spot.row == other_robot.curr.row and spot.col == other_robot.curr.col:
+                    return True
+        return spot.is_barrier()
 
     def update_neighbors(self):
         self.neighbors = []
@@ -295,24 +302,32 @@ def h(p1, p2):
 def on_board(x):
     return x>=0 and x< ROWS
 
-def reconstruct_path(came_from, current, draw, Robot):
+def reconstruct_path(came_from, current, draw, Robot,update_grid):
     path = []
     new_path = []
+    if update_grid:
+        new_path.append(Robot.curr)
     while current in came_from:
-    #while current in Robot.path:
         current = came_from[current]
-        #current = current.reverse()
-        #current.make_path(Robot.color_index)
         path.append(current)
     for current in reversed(path[:-1]):
         new_path.append(current)
-        current.make_path(Robot.color_index)
-        draw()
+        if update_grid:
+            current.make_path(Robot.color_index)
+            draw()
+    new_path.append(Robot.end)
+    #draw()
     Robot.path = new_path
+    #print(f"\n\nRobot {Robot.priority} start {Robot.curr.row},{Robot.curr.col}")
+    #for iter in Robot.path:
+    #    print(f"path {iter.row},{iter.col}")
 
 
-def algorithm(draw, Robot):
-    start = Robot.start
+def calc_manhattan_dist(p1, p2):
+    return abs(p1.row - p2.row) + abs(p1.col - p2.col)
+
+def algorithm(draw, Robot, update_grid):
+    start = Robot.curr
     end = Robot.end
     count = 0
     open_set = PriorityQueue()
@@ -331,16 +346,34 @@ def algorithm(draw, Robot):
                 pygame.quit()
 
         current = open_set.get()[2]
+        #
+        current_loc = current.get_pos()
+        #check 1,2
         open_set_hash.remove(current)
-
+        # Debugging: Print g_score and f_score for every tile
+        #print("before we got :\n")
+        for row in GRID:
+            for spot in row:
+                if(g_score[spot] == float("inf") and f_score[spot] == float("inf")):
+                    continue
+        if (Robot.points_to_avoid):# Given point to avoid in the futre, build the path so that robot will avoid it
+            man_dist = calc_manhattan_dist(current, Robot.curr)
+            if (man_dist < len(Robot.points_to_avoid)):
+                if current.get_pos() in Robot.points_to_avoid[man_dist]:
+                    continue
         if current == end:
-            reconstruct_path(came_from, end, draw,Robot)
-            end.make_end(Robot.color_index)
+            reconstruct_path(came_from, end, draw,Robot,update_grid)
+            if update_grid:
+                end.make_end(Robot.color_index)
             return True
-
         for neighbor in current.neighbors:
+            if (Robot.points_to_avoid):  # Given point to avoid in the futre, build the path so that robot will avoid it
+                man_dist = calc_manhattan_dist(neighbor, Robot.start)
+                if (man_dist < len(Robot.points_to_avoid)):
+                    if neighbor.get_pos() in Robot.points_to_avoid[man_dist - 1]:
+                        temp_g_score = float("inf")
+                        continue
             temp_g_score = g_score[current] + 1
-
             if temp_g_score < g_score[neighbor]:
                 came_from[neighbor] = current
                 g_score[neighbor] = temp_g_score
@@ -349,13 +382,31 @@ def algorithm(draw, Robot):
                     count += 1
                     open_set.put((f_score[neighbor], count, neighbor))
                     open_set_hash.add(neighbor)
-                    neighbor.make_open()
+                    if update_grid:
+                        neighbor.make_open()
 
         draw()#Need to fix here the draw
 
-        if current != start:
+        if current != start and update_grid:
             current.make_closed()
 
+    return False
+#3,5 [4,5 3,4 3,6] 5,5
+def avoidInTheWay(robot):
+    tmp = robot.curr.get_pos()
+    for turn in robot.points_to_avoid:
+        for avoid in turn:
+            avoid_cor =[avoid[0],avoid[1]] #[list(t) for t in avoid]
+            print(f"avoid is {avoid_cor} and {type(avoid_cor)}")
+            #avoid_cor = [int(x.strip()) for x in tuple_string.split(",")]
+            dist = abs(robot.curr.row - avoid_cor[0]) + abs(robot.curr.col - avoid_cor[1])
+            avoing = robot.path[dist].get_pos()
+            print(f"dist is {dist} point is {robot.path[dist].get_pos()}")
+            if robot.path[dist].row == avoid_cor[0] and robot.path[dist].col == avoid_cor[1]:
+                print(f"got a match for {avoid_cor}")
+                return True
+            else:
+                print(f"point {avoid_cor} not in way")
     return False
 
 def calc_grad(points):
@@ -451,20 +502,45 @@ def update_collision(robot_list):
                 robot.impact_collision.append(spot)
         search_color = [x for x in search_color if x not in robot.color_index.color_list()]
 
+def get_non_diagonal_neighbors(x, y):
+    neighbors = [
+        (x, y-1),  # Top
+        (x-1, y),  # Left
+        (x+1, y),  # Right
+        (x, y+1)   # Bottom
+    ]
+    valid_neighbors = [(i, j) for i, j in neighbors if 0 <= i < 20 and 0 <= j < 20]
+    return valid_neighbors
+
 def update_rad(robot):
+    print(f"robot number {robot.priority + 1} has entered update_rad")
     robot.impact_rad_points = robot.generate_circle(robot.curr, robot.impact_rad)
     robot.impact_points = robot.points_inside_circle(robot.curr, robot.impact_rad)
     robot.impact_collision = robot.check_circle(robot.impact_points)
-    #print(f"impact_collision: {robot.impact_collision}")
-    robot.impact_lookat = robot.lookat(robot.impact_lookat ,robot.impact_collision)
+    #for point in robot.impact_collision:
+    #    print(f"impact_collision: {point.get_pos()}")
+    robot.impact_lookat = robot.lookat(robot.impact_lookat, robot.impact_collision)
+    #print(f"impact list: {robot.impact_lookat}")
+    for points in robot.impact_lookat:
+        print(points.points[0].get_pos())
     for i, spot in enumerate(robot.impact_lookat):
         if len(spot.points) > 1:
-            robot.impact_lookat[i].prob = probability([0.5, 0.1, 0.2], calc_grad(spot.points), spot.points[-2].get_pos(), 3,TOP_PERCENTAGE)
+            if calc_grad(spot.points) == "STAY":
+                continue
+            robot.impact_lookat[i].prob = probability([0.75, 0.05, 0.1], calc_grad(spot.points),spot.points[-1].get_pos(), 3, TOP_PERCENTAGE)
+            if (robot.impact_lookat[i].prob.blocked_in_future):
+                robot.points_to_avoid = robot.impact_lookat[i].prob.blocked_in_future
+                print(f"robot {robot.priority} added {robot.points_to_avoid} ")
+        if len(spot.points) == 1:
+            pos = spot.points[0].get_pos()
+            robot.points_to_avoid.append([pos])
+            robot.points_to_avoid.append(get_non_diagonal_neighbors(pos[0], pos[1]))
 
-    robot.search_rad_points = robot.generate_circle(robot.curr, robot.search_rad)
-    robot.search_points = robot.points_inside_circle(robot.curr, robot.search_rad)
-    robot.search_collision = robot.check_circle(robot.search_points)
-    robot.search_lookat = robot.lookat(robot.search_lookat, robot.search_collision)
+
+    #robot.search_rad_points = robot.generate_circle(robot.curr, robot.search_rad)
+    #robot.search_points = robot.points_inside_circle(robot.curr, robot.search_rad)
+    #robot.search_collision = robot.check_circle(robot.search_points)
+    #robot.search_lookat = robot.lookat(robot.search_lookat, robot.search_collision)
     #print(f"search_collision: {robot.search_collision}")
 
 def main(win, width):
@@ -494,7 +570,7 @@ def main(win, width):
                     continue
                 if not mid_click and robot_index < MAX_ROBOTS:
                     if start_end:
-                        Robot_List.append(Robot(spot, False, spot, 1, COLORS[robot_index], robot_index, 3, 6, None))
+                        Robot_List.append(Robot(spot, False, spot, 1, COLORS[robot_index], robot_index, 4, 6, None))
                         Spot.make_start(Robot_List[robot_index].start, Robot_List[robot_index].color_index)
                         start_end = False
 
@@ -531,7 +607,7 @@ def main(win, width):
                             for spot in row:
                                 spot.update_neighbors()
 
-                        algorithm(lambda: draw(win, ROWS, width), Robot_List[i])
+                        algorithm(lambda: draw(win, ROWS, width), Robot_List[i],True)
                         end_time = time.time()
                         elapsed_time = end_time - start_time
                         print(f"Elapsed time: {elapsed_time} seconds, for robot number: {i+1}/{robot_index}")
@@ -565,31 +641,70 @@ def main(win, width):
                                 spot.make_path(robot.color_index)
                             draw(win, ROWS, width)
 
-                if event.key == pygame.K_g or SIMULATE:
-                    SIMULATE = True
+                if event.key == pygame.K_g:# or SIMULATE:
+                    #SIMULATE = True
                     draw_blank(win, width, ROWS)
+                    all_finished = True
                     for robot in Robot_List:
-                        robot.curr = robot.path[0]
-                        Spot.make_start(robot.curr, robot.color_index)
+                        #robot.update_rad()
+                        #update_rad(robot)
+                        #time.sleep(2)
+                        if robot.curr != robot.end:#Changed here so that when all robots will get to their destanation the run will end
+                            all_finished = False
+                        make_start_at = robot.path[0].get_pos()
+                        print(f"robot {robot.priority} is printing {make_start_at} at start")
                         Spot.make_end(robot.path[-1], robot.color_index)
+                        #Spot.make_start(robot.path[0], robot.color_index)
+                    if all_finished:
+                        print("All robots has got to their goal. Do you want to restart?")
+                        exit()
 
                     timer_count += 1
                     print(f"time: {timer_count}")
                     for i, robot in enumerate(Robot_List):
-                        #print(f"for robot numer: {i + 1} the path length is: {len(robot.path) - 1}")
+                        update_rad(robot)
+                        # if there are points to avoid look if there are in our robot path, if not exit
+                        # if there are in robot path calculate new path
+                        if robot.points_to_avoid:
+                            print(f"\nPOINTS TO AVOID are {robot.points_to_avoid}")
+                            if True :#avoidInTheWay(robot):
+                                print("before")
+                                for tile in robot.path:
+                                    print(f"{tile.row},{tile.col}")
+                                ret_value = algorithm(lambda: draw(win, ROWS, width), Robot_List[i], False)
+                                if ret_value == False:
+                                    print("False_MOVING = STAY!")
+                                if Robot_List[i].path and Robot_List[i].path[0] != Robot_List[i].curr and timer_count == 1:
+                                    Robot_List[i].path.insert(0, Robot_List[i].curr)
+                                print(f"after ret_value {ret_value}\n")
+                                for tile in robot.path:
+                                    print(f"{tile.row},{tile.col}")
+                            else:
+                                print("\npoints to avoid not interuped")
+                            robot.points_to_avoid = ""
+                        print(f"for robot numer: {i} pos {robot.curr.row},{robot.curr.col} ")
+                        if(len(robot.path) >=1):
+                            print(f"next {robot.path[0].row},{robot.path[0].col}")
+                        #robot.curr.reset()
                         robot.curr = robot.path[0]
+                        make_start_at = robot.path[0].get_pos()
+                        print(f"robot {i} is printing {make_start_at} at function and reseting {robot.path[0].get_pos()}")
+                        Spot.make_start(robot.path[0], robot.color_index)
                         Spot.make_start(robot.curr, robot.color_index)
                         Spot.make_end(robot.path[-1], robot.color_index)
-                        update_rad(robot)
                         if robot.curr == robot.end:
                             print(f"Robot {i+1} Ended course")
                             SIMULATE = False
-                        for target_color in robot.impact_lookat:
-                            if target_color.prob != None:
-                                SIMULATE = False
-                                print(f"Robot {i + 1} Got a robot in his course")
+                        #next_spot = robot.path[0]
+                        #
+                        #for target_color in robot.impact_lookat:
+                         #   if target_color.prob != None:
+                          #      SIMULATE = False
+                                ###print(f"Robot {i + 1} Got a robot in his course")
                         if len(robot.path[1:]) > 0:
                             robot.path = robot.path[1:]
+                        print(f"{i} pos {robot.curr.row},{robot.curr.col} next {robot.path[0].row},{robot.path[0].col} end {robot.end.row},{robot.end.col}\n")
+
 
     pygame.quit()
 

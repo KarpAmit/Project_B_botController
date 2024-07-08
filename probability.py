@@ -1,9 +1,11 @@
 from collections import deque
-
 import numpy as np
 
+ROWS = 20
+
+
 class probability:
-    def __init__(self, prob=[0.6, 0.1, 0.15], first_movement='up', starting_point=(10, 10),  turns_number=3,top_percentage=30):
+    def __init__(self, prob = [0.75, 0.05, 0.1], first_movement='up', starting_point=(10, 10), turns_number=3,top_percentage=50):
         self.forward = prob[0]
         self.backward = prob[1]
         self.sideways = prob[2]
@@ -11,13 +13,22 @@ class probability:
         self.starting_point = starting_point
         self.turns_number = turns_number
         self.top_percentage = top_percentage
-        self.next_turns_array = self.calc_prob(self.first_movement, self.generate_grid(self.starting_point, self.turns_number), self.turns_number)
+        self.next_turns_array = self.calc_prob(self.first_movement,
+                                               self.generate_grid(self.starting_point, self.turns_number),
+                                               self.turns_number)
         self.next_turns_array[self.starting_point[0]][self.starting_point[1]][0] = 1
         self.blocked_in_future = self.get_top_percentage(self.next_turns_array)
 
+        # הדפסה לבדיקה
+        #print("Next Turns Array:")
+        #self.print_grid(self.next_turns_array)
+
+        #print("Blocked in Future:")
+        #for turn, cells in enumerate(self.blocked_in_future):
+        #    print(f"Turn {turn + 1}: {cells}")
 
     def generate_grid(self, player_position, num_turns):
-        grid = [[{} for _ in range(20)] for _ in range(20)]
+        grid = [[{} for _ in range(ROWS)] for _ in range(ROWS)]
         directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]  # right, left, down, up
 
         # Perform breadth-first search
@@ -36,25 +47,38 @@ class probability:
 
             for dx, dy in directions:
                 new_x, new_y = position[0] + dx, position[1] + dy
-                if 0 <= new_x < 20 and 0 <= new_y < 20:
+                if 0 <= new_x < ROWS and 0 <= new_y < ROWS:
                     queue.append(((new_x, new_y), turns_taken + 1, path + [position]))
 
         return grid
 
-    # Printing the grid
-    def print_grid(self):
-        turns_number = self.next_turns_array.shape[2]
+    def print_grid(self, grid):
+        turns_number = grid.shape[2]
+
         for turn in range(turns_number):
             print(f"Turn {turn}:")
-            for i in range(20):
+
+            for i in range(ROWS):
                 row = ""
-                for j in range(20):
-                    row += f"{self.next_turns_array[i][j][turn]:<8}"  # Adjust width as needed
+                for j in range(ROWS):
+                    cell_value = grid[i, j, turn]
+                    row += f"{cell_value:<8.2f}"  # Adjust width as needed and format as float
                 print(row)
+
+            print()
+
+            # Print additional information for the current turn
+            print(f"Details for Turn {turn}:")
+            for i in range(ROWS):
+                for j in range(ROWS):
+                    cell_value = grid[i, j, turn]
+                    if cell_value > 0:  # Check if the cell value is greater than zero
+                        print(f"Row: {i}, Col: {j}, Probability: {cell_value:.2f}")
+
             print()
 
     def get_prob(self, last_movement, positions):
-        diraction = {
+        direction = {
             'up': {
                 'up': self.forward,
                 'down': self.backward,
@@ -78,26 +102,18 @@ class probability:
                 'down': self.sideways,
                 'right': self.backward,
                 'left': self.forward
-            },
-            'STAY': {
-                'up': 0.0,
-                'down': 0.0,
-                'right': 0.0,
-                'left': 0.0
             }
         }
         movements = {'(0, -1)': 'left', '(0, 1)': 'right', '(1, 0)': 'down', '(-1, 0)': 'up'}
         first_place = positions[0]
-        prob = 0
+        prob = 1
         for position in positions[1:]:
-            dx = position[0] - first_place[0]
-            dy = position[1] - first_place[1]
+            delta_rows = position[0] - first_place[0] #dx = position[0] - first_place[0]
+            delta_col = position[1] - first_place[1] #dy = position[1] - first_place[1]
             first_place = position
-            if prob == 0:
-                prob += diraction[last_movement][movements[str((dx, dy))]]
-            else:
-                prob *= diraction[last_movement][movements[str((dx, dy))]]
-            last_movement = movements[str((dx, dy))]
+            move = movements[str((delta_col, delta_rows))] # movements[str((dx, dy))]
+            prob *= direction[last_movement][move]
+            last_movement = move  # Update last_movement for the next iteration
         return prob
 
     def calc_prob(self, first_movement, grid, turns):
@@ -110,37 +126,23 @@ class probability:
                             prob_array[i][j][turn] += self.get_prob(first_movement, way)
         return prob_array
 
-    def print_grid_with_colors(self, grid):
-        for turn in range(grid.shape[2]):
-            print(f"Turn {turn + 1}:")
-            top_prob_tiles = self.get_top_percentage(grid,turn)
-            for row in range(grid.shape[0]):
-                for col in range(grid.shape[1]):
-                    if grid[row, col, turn] > 0:
-                        # Print in green if the value is greater than 0
-                        print("{:.2f}".format(grid[row, col, turn]), end=" ")
-                    else:
-                        # Otherwise, print normally
-                        print("{:.2f}".format(grid[row, col, turn]), end=" ")
-                print()  # Newline for next row
-            print()  # Empty line for next turn
-
-    def get_top_percentage(self,grid):
+    def get_top_percentage(self, grid):
         non_zero = []
         for turn in range(self.turns_number):
             for row in range(grid.shape[0]):
                 for col in range(grid.shape[1]):
-                    if (grid[row, col, turn] > 0):
+                    if grid[row, col, turn] > 0:
                         non_zero.append([row, col, turn, grid[row, col, turn]])
-        #sorted_probabilities = sorted(non_zero.items(), key=lambda x: x[1], reverse=True)
+                        #print(f"Turn: {turn}, Row: {row}, Col: {col}, Value: {grid[row, col, turn]}")  # הוספת הדפסות לבדיקה
         sorted_array = sorted(non_zero, key=lambda x: x[3], reverse=True)
         num_elements = int(len(sorted_array) * (self.top_percentage / 100))
-        #In case the values in index num_elements-1 and (num_elements) are  equal increse num_elements
+
         while num_elements < len(sorted_array):
-            if sorted_array[num_elements -1][-1] == sorted_array[num_elements ][-1]:
+            if sorted_array[num_elements - 1][-1] == sorted_array[num_elements][-1]:
                 num_elements += 1
             else:
                 break
+
         top_elements = sorted_array[:num_elements]
         to_ret = [[] for _ in range(self.turns_number)]
         for elem in top_elements:
@@ -148,34 +150,7 @@ class probability:
             to_ret[turn].append((elem[0], elem[1]))
         return to_ret
 
-    def example(self):
-        player_position = self.starting_point  # Example player position
-        num_turns = self.turns_number
-        #prob = self.prob
-        movement = self.first_movement
-        grid = self.generate_grid(player_position, num_turns)
-        #self.print_grid(grid)
 
-
-        #prob_array = np.zeros((len(grid), len(grid), num_turns))
-        prob_array = self.calc_prob(movement, grid, num_turns)
-        prob_array[player_position[0]][player_position[1]][0] = 1
-        self.print_grid_with_colors(prob_array)
-
-#FORWARD = 0.5
-#BACKWARDS = 0.1
-#SIDEWAYS = 0.2
-#example()
+# הרצה ובדיקות
 prob = probability()
-#prob.example
-#As we can see we got array of arrays wo that we have[..[row,col,turn]..]
-for iter in prob.blocked_in_future:
-    print(iter)
-print(0)
-
-
-
-
-
-
-
+print(prob.blocked_in_future)
