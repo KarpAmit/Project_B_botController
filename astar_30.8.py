@@ -464,24 +464,31 @@ def update_rad(robot):
     for i, spot in enumerate(robot.impact_lookat):
         if len(spot.points) > 1:
             if calc_grad(spot.points) == "STAY":
+                robot.points_to_avoid = merge_points_to_avoid([spot.points[-1].get_pos(),spot.points[-1].get_pos()],robot.points_to_avoid)
                 continue
             robot.impact_lookat[i].prob = probability([0.75, 0.05, 0.1], calc_grad(spot.points),spot.points[-1].get_pos(), 3, TOP_PERCENTAGE)
             if (robot.impact_lookat[i].prob.blocked_in_future):
                 robot.points_to_avoid = merge_points_to_avoid(robot.impact_lookat[i].prob.blocked_in_future,robot.points_to_avoid)
         if len(spot.points) == 1:
             pos = spot.points[0].get_pos()
-            robot.points_to_avoid.append([pos])
-            robot.points_to_avoid.append(get_non_diagonal_neighbors(pos[0], pos[1]))
+            points_to_avoid = [[pos],get_non_diagonal_neighbors(pos[0], pos[1])]
+            robot.points_to_avoid = merge_points_to_avoid(points_to_avoid,robot.points_to_avoid)
+            #robot.points_to_avoid.append([pos])
+           # robot.points_to_avoid.append(get_non_diagonal_neighbors(pos[0], pos[1]))
 
 def merge_points_to_avoid(arr1,arr2):
-        max_length = max(len(arr1), len(arr2))
-        merged_array = []
-        for i in range(max_length):
-            subarr1 = arr1[i] if i < len(arr1) else []
-            subarr2 = arr2[i] if i < len(arr2) else []
-            merged_subarr = subarr1 + subarr2
-            merged_array.append(merged_subarr)
-        return merged_array
+    if(not arr2):
+        return arr1
+    if(not arr1):
+        return arr2
+    max_length = max(len(arr1), len(arr2))
+    merged_array = []
+    for i in range(max_length):
+        subarr1 = arr1[i] if i < len(arr1) else []
+        subarr2 = arr2[i] if i < len(arr2) else []
+        merged_subarr = subarr1 + subarr2
+        merged_array.append(merged_subarr)
+    return merged_array
 
 def main(win, width):
     MAX_ROBOTS = 7
@@ -576,8 +583,9 @@ def main(win, width):
                     for robot in Robot_List:
                         if robot.curr != robot.end:
                             all_finished = False
-                        make_start_at = robot.path[0].get_pos()
                         Spot.make_end(robot.path[-1], robot.color_index)
+                        if timer_count == 0 :
+                            robot.start.make_start(robot.color_index)
                     if all_finished:
                         print("All robots has got to their goal, the run is finished.")
                         exit()
@@ -585,11 +593,18 @@ def main(win, width):
                     print(f"time: {timer_count}")
                     for i, robot in enumerate(Robot_List):
                         update_rad(robot)
+                        print(f"robot {i} points_to_avoid {robot.points_to_avoid}")
                         if robot.points_to_avoid:
                             if True :#avoidInTheWay(robot): ###############################################################should we use this???????????
+                                print("before")
+                                for tile in robot.path:
+                                    print(f"{tile.row},{tile.col}")
                                 ret_value = algorithm(lambda: draw(win, ROWS, width), Robot_List[i], False)
-                                if Robot_List[i].path and Robot_List[i].path[0] != Robot_List[i].curr and timer_count == 1 or ret_value == False:
+                                if  Robot_List[i].path and Robot_List[i].path[0] != Robot_List[i].curr and timer_count == 1 or ret_value == False:
                                     Robot_List[i].path.insert(0, Robot_List[i].curr)
+                                print(f"after ret_value {ret_value}\n")
+                                for tile in robot.path:
+                                    print(f"{tile.row},{tile.col}")
                             robot.points_to_avoid = ""
                         robot.curr = robot.path[0]
                         make_start_at = robot.path[0].get_pos()
