@@ -359,7 +359,7 @@ def algorithm(draw, Robot, update_grid):
         if (Robot.points_to_avoid):# Given point to avoid in the futre, build the path so that robot will avoid it
             man_dist = calc_manhattan_dist(current, Robot.curr)
             if (man_dist < len(Robot.points_to_avoid)):
-                if current.get_pos() in Robot.points_to_avoid[man_dist]:
+                if  current.get_pos() in Robot.points_to_avoid[man_dist-1]:
                     continue
         if current == end:
             reconstruct_path(came_from, end, draw,Robot,update_grid)
@@ -529,19 +529,26 @@ def update_rad(robot):
                 continue
             robot.impact_lookat[i].prob = probability([0.75, 0.05, 0.1], calc_grad(spot.points),spot.points[-1].get_pos(), 3, TOP_PERCENTAGE)
             if (robot.impact_lookat[i].prob.blocked_in_future):
-                robot.points_to_avoid = robot.impact_lookat[i].prob.blocked_in_future
+                if(robot.priority == 2):
+                    print("1")
+                print(f"before we had {robot.points_to_avoid}")
+                robot.points_to_avoid = merge_points_to_avoid(robot.impact_lookat[i].prob.blocked_in_future,robot.points_to_avoid)
                 print(f"robot {robot.priority} added {robot.points_to_avoid} ")
         if len(spot.points) == 1:
             pos = spot.points[0].get_pos()
             robot.points_to_avoid.append([pos])
             robot.points_to_avoid.append(get_non_diagonal_neighbors(pos[0], pos[1]))
 
+def merge_points_to_avoid(arr1,arr2):
+        max_length = max(len(arr1), len(arr2))
+        merged_array = []
+        for i in range(max_length):
+            subarr1 = arr1[i] if i < len(arr1) else []
+            subarr2 = arr2[i] if i < len(arr2) else []
+            merged_subarr = subarr1 + subarr2
+            merged_array.append(merged_subarr)
 
-    #robot.search_rad_points = robot.generate_circle(robot.curr, robot.search_rad)
-    #robot.search_points = robot.points_inside_circle(robot.curr, robot.search_rad)
-    #robot.search_collision = robot.check_circle(robot.search_points)
-    #robot.search_lookat = robot.lookat(robot.search_lookat, robot.search_collision)
-    #print(f"search_collision: {robot.search_collision}")
+        return merged_array
 
 def main(win, width):
     #ROWS = 20
