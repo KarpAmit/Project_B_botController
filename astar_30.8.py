@@ -39,7 +39,7 @@ TURQUOISE = (64, 224, 208)
 #DARKGOLDENROD = ((184, 134, 11), (255, 185, 15), (238, 173, 14), (205, 149, 12), (139, 101, 8))
 # Array of agent's colors
 
-TOP_PERCENTAGE = 30
+TOP_PERCENTAGE = 40
 
 class points_to_look:
     def __init__(self, color, points, prob):
@@ -146,6 +146,10 @@ class Robot:
 
     def lookat(self, lookat_list, search_list):
         res = []
+        lenasd = len(lookat_list)
+        lookat_listas = lookat_list
+        search_listasd = len(search_list)
+        asdsa = search_list
         for spot in search_list:
             if len(lookat_list) > 0:
                 for i, spot_hist in enumerate(lookat_list):
@@ -315,6 +319,8 @@ def algorithm(draw, Robot, update_grid):
             if event.type == pygame.QUIT:
                 pygame.quit()
         current = open_set.get()[2]
+        avoid = Robot.points_to_avoid
+        current_po = current.get_pos()
         open_set_hash.remove(current)
         for row in GRID:
             for spot in row:
@@ -323,7 +329,7 @@ def algorithm(draw, Robot, update_grid):
         if (Robot.points_to_avoid):# Given point to avoid in the futre, build the path so that robot will avoid it
             man_dist = calc_manhattan_dist(current, Robot.curr)
             if (man_dist < len(Robot.points_to_avoid)):
-                if  current.get_pos() in Robot.points_to_avoid[man_dist-1]:
+                if  current.get_pos() in Robot.points_to_avoid[man_dist] or (current.get_pos() in Robot.points_to_avoid[man_dist-1] and Robot.priority != 0):
                     continue
         if current == end:
             reconstruct_path(came_from, end, draw,Robot,update_grid)
@@ -355,11 +361,17 @@ def algorithm(draw, Robot, update_grid):
 
 def avoidInTheWay(robot):
     tmp = robot.curr.get_pos()
+    all = robot.points_to_avoid
     for turn in robot.points_to_avoid:
         for avoid in turn:
             avoid_cor =[avoid[0],avoid[1]]
             dist = abs(robot.curr.row - avoid_cor[0]) + abs(robot.curr.col - avoid_cor[1])
+            if(dist >= len(robot.path)):
+                continue
             if robot.path[dist].row == avoid_cor[0] and robot.path[dist].col == avoid_cor[1]:
+                return True
+            dist -=1 #Sometimes the other robot already did its move
+            if robot.path[dist].row == avoid_cor[0] and robot.path[dist].col == avoid_cor[1] and robot.priority != 0:
                 return True
     return False
 
@@ -473,8 +485,6 @@ def update_rad(robot):
             pos = spot.points[0].get_pos()
             points_to_avoid = [[pos],get_non_diagonal_neighbors(pos[0], pos[1])]
             robot.points_to_avoid = merge_points_to_avoid(points_to_avoid,robot.points_to_avoid)
-            #robot.points_to_avoid.append([pos])
-           # robot.points_to_avoid.append(get_non_diagonal_neighbors(pos[0], pos[1]))
 
 def merge_points_to_avoid(arr1,arr2):
     if(not arr2):
@@ -486,7 +496,7 @@ def merge_points_to_avoid(arr1,arr2):
     for i in range(max_length):
         subarr1 = arr1[i] if i < len(arr1) else []
         subarr2 = arr2[i] if i < len(arr2) else []
-        merged_subarr = subarr1 + subarr2
+        merged_subarr = list(subarr1) + list(subarr2)
         merged_array.append(merged_subarr)
     return merged_array
 
@@ -591,20 +601,26 @@ def main(win, width):
                         exit()
                     timer_count += 1
                     print(f"time: {timer_count}")
-                    for i, robot in enumerate(Robot_List):
+                    lent = len(Robot_List)
+                    for i in range(len(Robot_List)):
+                        robot = Robot_List[i]
+                    #for i, robot in enumerate(Robot_List):
                         update_rad(robot)
                         print(f"robot {i} points_to_avoid {robot.points_to_avoid}")
+                        if i ==1:
+                            x=1
                         if robot.points_to_avoid:
-                            if True :#avoidInTheWay(robot): ###############################################################should we use this???????????
+                            if avoidInTheWay(robot):
                                 print("before")
                                 for tile in robot.path:
                                     print(f"{tile.row},{tile.col}")
                                 ret_value = algorithm(lambda: draw(win, ROWS, width), Robot_List[i], False)
-                                if  Robot_List[i].path and Robot_List[i].path[0] != Robot_List[i].curr and timer_count == 1 or ret_value == False:
+                                if Robot_List[i].path and Robot_List[i].path[0] != Robot_List[i].curr and timer_count == 1 or ret_value == False:
                                     Robot_List[i].path.insert(0, Robot_List[i].curr)
                                 print(f"after ret_value {ret_value}\n")
                                 for tile in robot.path:
                                     print(f"{tile.row},{tile.col}")
+
                             robot.points_to_avoid = ""
                         robot.curr = robot.path[0]
                         make_start_at = robot.path[0].get_pos()

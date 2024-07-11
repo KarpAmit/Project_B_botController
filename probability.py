@@ -83,6 +83,12 @@ class probability:
                 'down': self.sideways,
                 'right': self.backward,
                 'left': self.forward
+            },
+            'UNKNOWN': {
+                'up': self.forward,
+                'down': self.forward,
+                'right': self.forward,
+                'left': self.forward
             }
         }
         movements = {'(0, -1)': 'left', '(0, 1)': 'right', '(1, 0)': 'down', '(-1, 0)': 'up'}
