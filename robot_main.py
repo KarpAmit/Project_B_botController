@@ -329,7 +329,7 @@ def algorithm(draw, Robot, update_grid):
         if (Robot.points_to_avoid):# Given point to avoid in the futre, build the path so that robot will avoid it
             man_dist = calc_manhattan_dist(current, Robot.curr)
             if (man_dist < len(Robot.points_to_avoid)):
-                if  current.get_pos() in Robot.points_to_avoid[man_dist] or (current.get_pos() in Robot.points_to_avoid[man_dist-1] and Robot.priority != 0):
+                if  current.get_pos() in Robot.points_to_avoid[man_dist] :#or (current.get_pos() in Robot.points_to_avoid[man_dist-1] and Robot.priority != 0):
                     continue
         if current == end:
             reconstruct_path(came_from, end, draw,Robot,update_grid)
@@ -371,8 +371,8 @@ def avoidInTheWay(robot):
             if robot.path[dist].row == avoid_cor[0] and robot.path[dist].col == avoid_cor[1]:
                 return True
             dist -=1 #Sometimes the other robot already did its move
-            if robot.path[dist].row == avoid_cor[0] and robot.path[dist].col == avoid_cor[1] and robot.priority != 0:
-                return True
+            #if robot.path[dist].row == avoid_cor[0] and robot.path[dist].col == avoid_cor[1] and robot.priority != 0:
+            #    return True
     return False
 
 def calc_grad(points):
@@ -601,21 +601,25 @@ def main(win, width):
                         exit()
                     timer_count += 1
                     print(f"time: {timer_count}")
-                    lent = len(Robot_List)
+                    print_start = {}
+                    print_end = {}
                     for i in range(len(Robot_List)):
                         robot = Robot_List[i]
                     #for i, robot in enumerate(Robot_List):
                         update_rad(robot)
-                        print(f"robot {i} points_to_avoid {robot.points_to_avoid}")
+                        print(f"robot {i} points_to_avoid {robot.points_to_avoid} current {robot.curr.get_pos()}")
                         if i ==1:
                             x=1
                         if robot.points_to_avoid:
-                            if avoidInTheWay(robot):
+                            ret = avoidInTheWay(robot)
+                            print(f"need to change {ret}")
+                            if ret:#avoidInTheWay(robot):
                                 print("before")
                                 for tile in robot.path:
                                     print(f"{tile.row},{tile.col}")
                                 ret_value = algorithm(lambda: draw(win, ROWS, width), Robot_List[i], False)
-                                if Robot_List[i].path and Robot_List[i].path[0] != Robot_List[i].curr and timer_count == 1 or ret_value == False:
+                                if Robot_List[i].path and Robot_List[i].path[0] != Robot_List[i].curr or ret_value == False:#and timer_count == 1 or ret_value == False:
+                                #if  timer_count == 1 or ret_value == False:
                                     Robot_List[i].path.insert(0, Robot_List[i].curr)
                                 print(f"after ret_value {ret_value}\n")
                                 for tile in robot.path:
@@ -624,14 +628,28 @@ def main(win, width):
                             robot.points_to_avoid = ""
                         robot.curr = robot.path[0]
                         make_start_at = robot.path[0].get_pos()
-                        Spot.make_start(robot.path[0], robot.color_index)
-                        Spot.make_start(robot.curr, robot.color_index)
-                        Spot.make_end(robot.path[-1], robot.color_index)
+                        print_start[make_start_at] = robot.color_index
+                        #Spot.make_start(robot.path[0], robot.color_index)
+                        make_end_at = robot.path[-1]
+                        print_end[make_end_at] = robot.color_index
+                        #Spot.make_start(robot.curr, robot.color_index)
+                        #Spot.make_end(robot.path[-1], robot.color_index)
                         if robot.curr == robot.end:
                             print(f"Robot {i+1} Ended course")
                             SIMULATE = False
                         if len(robot.path[1:]) > 0:
                             robot.path = robot.path[1:]
+                    for iter in print_end:
+                        tmp = iter
+                        tmp_loc = iter.get_pos()
+                        row, col = iter.get_pos()
+                        GRID[row][col].make_end(print_end[iter])
+                        #spot.make_end(iter,print_end[iter])
+                    for iter in print_start:
+                        row, col = iter
+                        GRID[row][col].make_start(print_start[iter])
+                        #spot.start(iter,print_start[iter])
+
     pygame.quit()
 
 main(WIN, WIDTH)
