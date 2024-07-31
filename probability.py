@@ -4,22 +4,23 @@ import numpy as np
 ROWS = 20
 
 
-class probability:
+class probability: #The whole probability is class
     def __init__(self, prob = [0.75, 0.05, 0.1], first_movement='up', starting_point=(10, 10), turns_number=3,top_percentage=50):
-        self.forward = prob[0]
-        self.backward = prob[1]
-        self.sideways = prob[2]
-        self.first_movement = first_movement
-        self.starting_point = starting_point
-        self.turns_number = turns_number
-        self.top_percentage = top_percentage
+        self.forward = prob[0] #probability to move forward
+        self.backward = prob[1] #probability to move backwards
+        self.sideways = prob[2] #probability to move sideways
+        self.first_movement = first_movement #Other robot last movement
+        self.starting_point = starting_point #Other robot last spot
+        self.turns_number = turns_number # How many turn in the future to predict
+        self.top_percentage = top_percentage # How many points to return, by top percentage
         self.next_turns_array = self.calc_prob(self.first_movement,
                                                self.generate_grid(self.starting_point, self.turns_number),
-                                               self.turns_number)
-        self.next_turns_array[self.starting_point[0]][self.starting_point[1]][0] = 1
-        self.blocked_in_future = self.get_top_percentage(self.next_turns_array)
+                                               self.turns_number)  #This value is tables of probabilities- where the other robot should be
+        self.next_turns_array[self.starting_point[0]][self.starting_point[1]][0] = 1 #Manually add the current location of the other robot initial location
+        self.blocked_in_future = self.get_top_percentage(self.next_turns_array) #this is the return value,after cutting the top percentage
 
-        # הדפסה לבדיקה
+        #The next section is for debugging, the first print the whole table, and the second the return value
+
         #print("Next Turns Array:")
         #self.print_grid(self.next_turns_array)
 
@@ -28,6 +29,11 @@ class probability:
         #    print(f"Turn {turn + 1}: {cells}")
 
     def generate_grid(self, player_position, num_turns):
+        #Given the class- self
+        #player_position - last point of the other robot
+        #num_turns - how many turns in the future to predict
+        #Creates firstly 3 grids with probabily 0 for every spot
+        #Than by the last spot and gradient add the probabilites for every spot
         grid = [[{} for _ in range(ROWS)] for _ in range(ROWS)]
         directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]  # right, left, down, up
 
@@ -53,11 +59,11 @@ class probability:
         return grid
 
     def print_grid(self, grid):
+        #Given the grids this function print all the grids values
+        #Also prints all the values than are non-zero and location
         turns_number = grid.shape[2]
-
         for turn in range(turns_number):
             print(f"Turn {turn}:")
-
             for i in range(ROWS):
                 row = ""
                 for j in range(ROWS):
@@ -78,6 +84,8 @@ class probability:
             print()
 
     def get_prob(self, last_movement, positions):
+        #Given the class, last movement and path
+        #This function calculate the probability for the robot to reach the current location
         direction = {
             'up': {
                 'up': self.forward,
@@ -108,15 +116,16 @@ class probability:
         first_place = positions[0]
         prob = 1
         for position in positions[1:]:
-            delta_rows = position[0] - first_place[0] #dx = position[0] - first_place[0]
-            delta_col = position[1] - first_place[1] #dy = position[1] - first_place[1]
+            delta_rows = position[0] - first_place[0]
+            delta_col = position[1] - first_place[1]
             first_place = position
-            move = movements[str((delta_col, delta_rows))] # movements[str((dx, dy))]
+            move = movements[str((delta_col, delta_rows))]
             prob *= direction[last_movement][move]
             last_movement = move  # Update last_movement for the next iteration
         return prob
 
     def calc_prob(self, first_movement, grid, turns):
+        #This function get the class, the first movement(gradient) of the robot, the grid and the turns and fill the grids with probabilities
         prob_array = np.zeros((len(grid), len(grid), turns))
         for i in range(len(grid)):
             for j in range(len(grid)):
@@ -127,13 +136,14 @@ class probability:
         return prob_array
 
     def get_top_percentage(self, grid):
+        #Given the class and the final grids with probabilites, this function return the top_percanatage grids
+        #the function return in the format of array, and subarrays for each turn
         non_zero = []
         for turn in range(self.turns_number):
             for row in range(grid.shape[0]):
                 for col in range(grid.shape[1]):
                     if grid[row, col, turn] > 0:
                         non_zero.append([row, col, turn, grid[row, col, turn]])
-                        #print(f"Turn: {turn}, Row: {row}, Col: {col}, Value: {grid[row, col, turn]}")  # הוספת הדפסות לבדיקה
         sorted_array = sorted(non_zero, key=lambda x: x[3], reverse=True)
         num_elements = int(len(sorted_array) * (self.top_percentage / 100))
 
@@ -151,6 +161,4 @@ class probability:
         return to_ret
 
 
-# הרצה ובדיקות
 prob = probability()
-print(prob.blocked_in_future)
