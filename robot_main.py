@@ -48,6 +48,7 @@ class points_to_look:
         self.prob = None
 
 class Color:
+    # For every robot there are 5 different sub-colors
     def __init__(self, index, start_color, stop_color, path_color, impact_color, search_color):
         self.index = index
         self.start_color = start_color
@@ -56,10 +57,10 @@ class Color:
         self.impact_color = impact_color
         self.search_color = search_color
 
-    def color_list(self):
+    def color_list(self): #set the color in array for future use
         return [self.start_color, self.stop_color, self.path_color, self.impact_color, self.search_color]
 
-#KHAKI = Color(0, (240, 230, 140), (255, 246, 143), (238, 230, 133), (205, 198, 115), (139, 134, 78))
+#Hard coded the colors by index, and then RGB for every sub-color
 SALMON = Color(0, (250,128,114), (255,140,105), (238,130,98), (205,112,84), (139,76,57))
 PALEGREEN = Color(1, (152, 251, 152), (154, 255, 154), (144, 238, 144), (124, 205, 124), (84, 139, 84))
 LIGHTPINK = Color(2, (255, 182, 193), (255, 174, 185), (238, 162, 173), (205, 140, 149), (139, 95, 101))
@@ -71,30 +72,28 @@ DARKGOLDENROD = Color(6, (184, 134, 11), (255, 185, 15), (238, 173, 14), (205, 1
 COLORS = [SALMON, PALEGREEN, LIGHTPINK, ORCHID, LIGHTSKYBLUE, CORAL, DARKGOLDENROD]
 STOP_COLORS = [SALMON.stop_color, PALEGREEN.stop_color, LIGHTPINK.stop_color, ORCHID.stop_color, LIGHTSKYBLUE.stop_color, CORAL.stop_color, DARKGOLDENROD.stop_color]
 class Robot:
-    def __init__(self, start, end, curr, speed, color_index, priority, impact_rad, search_rad, path):
-        self.start = start
-        self.end = end
-        self.curr = curr
-        self.color_index = color_index
-        self.speed = speed
-        self.priority = priority
-        self.impact_rad = impact_rad
-        self.search_rad = search_rad
-        self.impact_rad_points = self.generate_circle(self.curr, self.impact_rad)
-        self.impact_points_to_check = []
-        self.impact_points = self.points_inside_circle(self.curr, self.impact_rad)
-        self.search_rad_points = self.generate_circle(self.curr, self.search_rad)
-        self.search_points = self.points_inside_circle(self.curr, self.search_rad)
-        self.search_points_to_check = []
-        self.path = []
-        self.impact_collision = []
-        self.search_collision = []
-        self.impact_lookat = []
-        self.search_lookat = []
-        self.points_to_avoid = []
+    def __init__(self, start, end, curr, color_index, priority, impact_rad, search_rad, path):
+        self.start = start #Start point of the robot
+        self.end = end #Finish point of the path
+        self.curr = curr #Current location of the robot
+        self.color_index = color_index #Which color index belong to the robot
+        self.priority = priority  #What is the robot index
+        self.impact_rad = impact_rad #set the impact radius - how many spots
+        self.search_rad = search_rad #Set the search radius - how many spots
+        self.impact_rad_points = self.generate_circle(self.curr, self.impact_rad) #The points inside the impact radius
+        self.impact_points_to_check = [] #Suspitions points inside the impact radius
+        self.impact_points = self.points_inside_circle(self.curr, self.impact_rad) #Known points of other robot in the impaact radius
+        self.search_rad_points = self.generate_circle(self.curr, self.search_rad) #The points inside the search radius
+        self.search_points = self.points_inside_circle(self.curr, self.search_rad) #Known points of other robot in the search radius
+        self.path = [] #The current robot path from current location to end
+        self.impact_collision = [] #This are the Suspicion Points of another robot
+        self.impact_lookat = [] #This value indicates the "raw" knowledge of spots with another robot in them
+        self.points_to_avoid = [] #This value is the key component in avoiding collisions, it hold the points that we suspect there will be another robot in the future
 
 
     def fix_circle_points(self, input_list):
+        #Given array of spots, filter out all the spots that are not on board
+        #Gets the array of points
         seen = set()
         output_list = []
 
@@ -108,6 +107,7 @@ class Robot:
         return output_list
 
     def generate_circle(self, spot, radius=3, num_points=100):
+        # Given radius and point generate circle, num_points by default is set to 100 and help creating circle
         points = []
         theta = np.linspace(0, 2 * np.pi, num_points)
         x = spot.row + radius * np.cos(theta)
@@ -117,6 +117,7 @@ class Robot:
         return self.fix_circle_points(points)
 
     def points_inside_circle(self, spot, radius=3):
+        # Given point and radius get all the spots inside the circle
         points_inside = []
         min_row = int(spot.row - radius)
         max_row = int(spot.row + radius)
@@ -137,6 +138,7 @@ class Robot:
         return points_inside
 
     def check_circle(self, search_list):
+        # Given search_list return all the suspition points
         return_list = []
         for i, pos in enumerate(search_list):
             spot = get_spot(pos)
@@ -145,11 +147,8 @@ class Robot:
         return return_list
 
     def lookat(self, lookat_list, search_list):
+        # Given the search_list and current robot that nearby, return the new robots nearby and their current location
         res = []
-        lenasd = len(lookat_list)
-        lookat_listas = lookat_list
-        search_listasd = len(search_list)
-        asdsa = search_list
         for spot in search_list:
             if len(lookat_list) > 0:
                 for i, spot_hist in enumerate(lookat_list):
@@ -168,81 +167,67 @@ class Robot:
 
 class Spot:
     def __init__(self, row, col, width, total_rows):
-        self.row = row
+        self.row = row # Spot row and colom number
         self.col = col
-        self.x = row * width
+        self.x = row * width # The values in the grid that belong to the current spot
         self.y = col * width
-        self.color = WHITE
-        self.neighbors = []
-        self.close = []
+        self.color = WHITE # Spot initial color
+        self.neighbors = [] # All the spot's neighbors
+        self.close = []  # Whether there are robot there or no
         self.open = []
-        self.width = width
+        self.width = width # Spot size
         self.total_rows = total_rows
 
-    def get_pos(self):
+    def get_pos(self): # Return the spot row and colom
         return self.row, self.col
 
-    def make_red(self):
+    def make_red(self): # Draw the spot in red - closed
         self.color = RED
 
-    def draw_impact_circle(self, robot_color):
-
+    def draw_impact_circle(self, robot_color): # Draw impact circle by the robot's color index
         self.color = robot_color.impact_color
 
-    def draw_search_circle(self, robot_color):
+    def draw_search_circle(self, robot_color): # Draw search circle by the robot's color index
         self.color = robot_color.search_color
 
-    def is_closed(self):
+    def is_closed(self): # Check if the spot is closed - red
         return self.color == RED
 
-    def is_open(self):
+    def is_open(self): # Check if the spot is open - green
         return self.color == GREEN
 
-    def is_barrier(self):
+    def is_barrier(self): # Check if the spot is barried - black
         return self.color == BLACK
 
-    def is_start(self):
-        return self.color == ORANGE
-
-    def is_end(self):
-        return self.color == TURQUOISE
-
-    def reset(self):
+    def reset(self): # Reset the spot color to white
         self.color = WHITE
 
-    def make_start(self, robot_color):
+    def make_start(self, robot_color): # Draw the spot by color index - start color
         self.color = robot_color.start_color
 
-    def make_closed(self):
+    def make_closed(self): # Draw the spot by closed color - red
         self.close.append(self.get_pos())
         if show_open_close:
             self.color = RED
 
-    def make_open(self):
+    def make_open(self): # Draw the spot by open color - green
         self.open.append(self.get_pos())
         if show_open_close:
             self.color = GREEN
 
-    def make_barrier(self):
+    def make_barrier(self): # Set the spot to be barrier - black
         self.color = BLACK
 
-    def make_end(self, robot_color):
+    def make_end(self, robot_color): # Set the spot by color index to be end color
         self.color = robot_color.stop_color
 
-    def make_path(self, robot_color):
+    def make_path(self, robot_color): # Draw the spot to be path
         self.color = robot_color.path_color
 
-    def draw(self, win):
+    def draw(self, win): # Given the boarad and spot, this function use pygame library and draw the spot with new color
         pygame.draw.rect(win, self.color, (self.x, self.y, self.width, self.width))
 
-    def spot_is_not_free(spot, robot, Robot_List):
-        for other_robot in Robot_List:
-            if other_robot != robot:
-                if spot.row == other_robot.curr.row and spot.col == other_robot.curr.col:
-                    return True
-        return spot.is_barrier()
-
-    def update_neighbors(self):
+    def update_neighbors(self): # This function update for specific spot all the spots that are neighbors
         self.neighbors = []
         if self.row < self.total_rows - 1 and not GRID[self.row + 1][self.col].is_barrier():  # DOWN
             self.neighbors.append(GRID[self.row + 1][self.col])
@@ -256,7 +241,7 @@ class Spot:
         if self.col > 0 and not GRID[self.row][self.col - 1].is_barrier():  # LEFT
             self.neighbors.append(GRID[self.row][self.col - 1])
 
-    def check_point(self, Robot_List):
+    def check_point(self, Robot_List): # Given specific points and all the robots check if the spot is empty or not - False for not empty
         for robot in Robot_List:
             if self.row == robot.start.row and self.col == robot.start.col:
                 return False
@@ -268,22 +253,27 @@ class Spot:
     def __lt__(self, other):
         return False
 
-def get_spot(pos):
+def get_spot(pos): # Given spot row and colom - pos - return the spot object
     for row in GRID:
         for spot in row:
             if spot.row == pos[0] and spot.col == pos[1]:
                 return spot
     return None
 
-def h(p1, p2):
+def h(p1, p2):  # Givn two points calculate the huristic value to evalute the spot for A*
     x1, y1 = p1
     x2, y2 = p2
     return abs(x1 - x2) + abs(y1 - y2)
 
-def on_board(x):
+def on_board(x): # Check if the value (Can be row or colom) is on board or not
     return x>=0 and x< ROWS
 
 def reconstruct_path(came_from, current, draw, Robot,update_grid):
+    # Came from - new path from A*
+    # current - robot current location
+    # robot - the current robot
+    # update grid - if its the first run (After space key) whether or not to draw now the whole path
+    # This function update the robot new path and can draw the whole path
     path = []
     new_path = []
     if update_grid:
@@ -299,10 +289,15 @@ def reconstruct_path(came_from, current, draw, Robot,update_grid):
     new_path.append(Robot.end)
     Robot.path = new_path
 
-def calc_manhattan_dist(p1, p2):
+def calc_manhattan_dist(p1, p2): #Given two points calculate the manhatan distance between them
     return abs(p1.row - p2.row) + abs(p1.col - p2.col)
 
 def algorithm(draw, Robot, update_grid):
+    # robot the current robot
+    # update_grid - if its the first run (after space key) whether or not to draw the whole path
+    # Calculate the best available path to the end point
+    #
+    # initialize start point and end point and initilize the whole grid huristic to be inf expect the start location
     start = Robot.curr
     end = Robot.end
     count = 0
@@ -360,8 +355,8 @@ def algorithm(draw, Robot, update_grid):
     return False
 
 def avoidInTheWay(robot):
-    tmp = robot.curr.get_pos()
-    all = robot.points_to_avoid
+    # given the robot this function check if the PTA and the path cross by place and time
+    # This is in order to not change the current path if there is no reason to
     for turn in robot.points_to_avoid:
         for avoid in turn:
             avoid_cor =[avoid[0],avoid[1]]
@@ -376,6 +371,8 @@ def avoidInTheWay(robot):
     return False
 
 def calc_grad(points):
+    # points array of points
+    # this function calculate the gradient of the robot by the last 2 points
     last_point = points[-1]
     sec_to_last_point = points[-2]
     calc_row = last_point.row - sec_to_last_point.row
@@ -393,7 +390,11 @@ def calc_grad(points):
     else:
         return "UNKNOWN"
 GRID = []
+
 def make_grid(rows, width):
+    # Rows - number of rows
+    # width - Size of every spot in the grid
+    # This function creats a 2-D grid - our board
     gap = width // rows
     for i in range(rows):
         GRID.append([])
@@ -402,6 +403,10 @@ def make_grid(rows, width):
             GRID[i].append(spot)
 
 def draw_grid(win, rows, width):
+    # win - Window to draw on
+    # rows - number of rows and coloms
+    # width - width and height of every spot
+    # This function draw the grid
     gap = width // rows
     for i in range(rows):
         pygame.draw.line(win, GREY, (0, i * gap), (width, i * gap))
@@ -409,6 +414,10 @@ def draw_grid(win, rows, width):
             pygame.draw.line(win, GREY, (j * gap, 0), (j * gap, width))
 
 def draw(win, rows, width):
+    # win - Window to draw on
+    # rows - number of rows and coloms
+    # width - width and height of every spot
+    # This function update the whole spots - first to white and than to the new color
     win.fill(WHITE)
     for row in GRID:
         for spot in row:
@@ -417,6 +426,10 @@ def draw(win, rows, width):
     pygame.display.update()
 
 def draw_blank(win, rows, width):
+    # win - Window to draw on
+    # rows - number of rows and coloms
+    # width - width and height of every spot
+    # This function draw all the spots to white if they are not black - barrier
     win.fill(WHITE)
     for row in GRID:
         for spot in row:
@@ -426,6 +439,10 @@ def draw_blank(win, rows, width):
     pygame.display.update()
 
 def get_clicked_pos(pos, rows, width):
+    # pos - where the user cliced
+    # rows - number of rows and coloms
+    # width - width and height of every spot
+    # This function return the correct spot by row and colom given where on the window the user has clicked
     gap = width // rows
     y, x = pos
     row = y // gap
@@ -433,6 +450,9 @@ def get_clicked_pos(pos, rows, width):
     return row, col
 
 def points_in_circle(center, radius):
+    # center - center of the circle
+    # radius - the radius of the circle
+    # This function return all the spots in the circle
     cx, cy = center
     x = np.arange(cx - radius, cx + radius + 1)
     y = np.arange(cy - radius, cy + radius + 1)
@@ -441,24 +461,11 @@ def points_in_circle(center, radius):
     # Create a mask to filter points within the circle
     mask = distances <= radius
     points = np.column_stack((xx[mask], yy[mask]))
-
     return points
 
-def update_collision(robot_list):
-    search_color = [WHITE, BLACK, RED, GREEN]
-    search_collision = []
-    #impact_collision = []
-    for robot in robot_list:
-        search_color += robot.color_index.color_list()
-        search_points = points_in_circle(robot.curr.get_pos(), robot.impact_rad)
-        for spot in search_points:
-            spot = GRID[spot[0]][spot[1]]
-            if spot.color not in search_color:
-                spot.make_red()
-                robot.impact_collision.append(spot)
-        search_color = [x for x in search_color if x not in robot.color_index.color_list()]
-
 def get_non_diagonal_neighbors(x, y):
+    # x,y - rows and colom of spot
+    # This function return all valid neighbors of spot by (row,colom)
     neighbors = [
         (x, y-1),  # Top
         (x-1, y),  # Left
@@ -469,17 +476,20 @@ def get_non_diagonal_neighbors(x, y):
     return valid_neighbors
 
 def update_rad(robot):
+    # This function get a robot, and generate its radiud
+    # Later the function search for other robots in the circle, and than check if already saw the robot or not to generate gradient
+    # Finaly the function add PTA to the robot
     robot.impact_rad_points = robot.generate_circle(robot.curr, robot.impact_rad)
     robot.impact_points = robot.points_inside_circle(robot.curr, robot.impact_rad)
     robot.impact_collision = robot.check_circle(robot.impact_points)
     robot.impact_lookat = robot.lookat(robot.impact_lookat, robot.impact_collision)
     for i, spot in enumerate(robot.impact_lookat):
         death_spots = get_non_diagonal_neighbors(spot.points[-1].get_pos()[0],spot.points[-1].get_pos()[1])
-        print(f'death_spots: {death_spots}')
         if len(spot.points) > 1:
             if calc_grad(spot.points) == "STAY":
                 robot.points_to_avoid = merge_points_to_avoid([spot.points[-1].get_pos(),spot.points[-1].get_pos()],robot.points_to_avoid)
                 continue
+                # In case there is gradient than get the top PTA by using probability
             robot.impact_lookat[i].prob = probability([0.75, 0.05, 0.1], calc_grad(spot.points),spot.points[-1].get_pos(), 3, TOP_PERCENTAGE)
             if (robot.impact_lookat[i].prob.blocked_in_future):
                 robot.points_to_avoid = merge_points_to_avoid(robot.impact_lookat[i].prob.blocked_in_future,robot.points_to_avoid)
@@ -490,6 +500,7 @@ def update_rad(robot):
         robot.points_to_avoid[1] = list(set(robot.points_to_avoid[1]) | set(death_spots))
 
 def merge_points_to_avoid(arr1,arr2):
+    # Given two arrays of PTA with sub arrays, this fucntion merge the array in way to keep the order of the sub arrays-PTA
     if(not arr2):
         return arr1
     if(not arr1):
@@ -504,6 +515,8 @@ def merge_points_to_avoid(arr1,arr2):
     return merged_array
 
 def main(win, width):
+    # this function get the window and the width of the spots. And basicily run the whole process
+    # THis function firstly initilize the grid, the robots the barrier and run all the process
     MAX_ROBOTS = 7
     robot_index = 0
     make_grid(ROWS, width)
@@ -519,7 +532,7 @@ def main(win, width):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run = False
-            if pygame.mouse.get_pressed()[0]:  # LEFT
+            if pygame.mouse.get_pressed()[0]:  # LEFT ->  initilize the robots initial place and end place
                 pos = pygame.mouse.get_pos()
                 row, col = get_clicked_pos(pos, ROWS, width)
                 spot = GRID[row][col]
@@ -527,7 +540,7 @@ def main(win, width):
                     continue
                 if not mid_click and robot_index < MAX_ROBOTS:
                     if start_end:
-                        Robot_List.append(Robot(spot, False, spot, 1, COLORS[robot_index], robot_index, 4, 6, None))
+                        Robot_List.append(Robot(spot, False, spot, COLORS[robot_index], robot_index, 4, 6, None))
                         Spot.make_start(Robot_List[robot_index].start, Robot_List[robot_index].color_index)
                         start_end = False
                     else:
@@ -539,7 +552,7 @@ def main(win, width):
                 else:
                     if spot.check_point(Robot_List):
                         spot.make_barrier()
-            elif pygame.mouse.get_pressed()[1]:  # Mid
+            elif pygame.mouse.get_pressed()[1]:  # Mid -> This section initilize the barrier spots
                 mid_click = True
                 print("number of robots: " + str(robot_index))
             elif pygame.mouse.get_pressed()[2]:  # RIGHT
@@ -551,7 +564,7 @@ def main(win, width):
                     start = None
                 elif spot == end:
                     end = None
-            if event.type == pygame.KEYDOWN or SIMULATE:
+            if event.type == pygame.KEYDOWN or SIMULATE: #This section start calaculate the first path by regular  A*
                 if SIMULATE:
                     event.key = pygame.K_g
                 for i in range(robot_index):
@@ -570,7 +583,7 @@ def main(win, width):
                         start_end = True
                         robot_index = 0
                         make_grid(ROWS, width)
-                    if event.key == pygame.K_r:
+                    if event.key == pygame.K_r:  #This shows the radiuses
                         if not show_rad:
                             for robot in Robot_List:
                                 for pos in robot.impact_rad_points:
@@ -590,10 +603,10 @@ def main(win, width):
                                 spot.make_start(robot.color_index)
                                 spot.make_path(robot.color_index)
                             draw(win, ROWS, width)
-                if event.key == pygame.K_g:
+                if event.key == pygame.K_g: # For every press on 'g' this section moves the robot in one spot
                     draw_blank(win, width, ROWS)
                     all_finished = True
-                    for robot in Robot_List:
+                    for robot in Robot_List: #This section check if all robots has reached to their end spot and if sor end the run
                         if robot.curr != robot.end:
                             all_finished = False
                         Spot.make_end(robot.path[-1], robot.color_index)
@@ -604,27 +617,16 @@ def main(win, width):
                         exit()
                     timer_count += 1
                     print(f"time: {timer_count}")
-                    lent = len(Robot_List)
-                    for i in range(len(Robot_List)):
-                        robot = Robot_List[i]
-                    #for i, robot in enumerate(Robot_List):
+                    for i, robot in enumerate(Robot_List):
                         update_rad(robot)
-                        print(f"robot {i} points_to_avoid {robot.points_to_avoid}")
-                        if i ==1:
-                            x=1
+                        # if there are points to avoid look if there are in our robot path, if not exit
+                        # if there are in robot path calculate new path
                         if robot.points_to_avoid:
                             if avoidInTheWay(robot):
-                                print("before")
-                                for tile in robot.path:
-                                    print(f"{tile.row},{tile.col}")
                                 ret_value = algorithm(lambda: draw(win, ROWS, width), Robot_List[i], False)
                                 if Robot_List[i].path and Robot_List[i].path[0] != Robot_List[i].curr and timer_count == 1 or ret_value == False:
                                     Robot_List[i].path.insert(0, Robot_List[i].curr)
-                                print(f"after ret_value {ret_value}\n")
-                                for tile in robot.path:
-                                    print(f"{tile.row},{tile.col}")
-
-                            robot.points_to_avoid = ""
+                            robot.points_to_avoid = ""  #Delete old PTA
                         robot.curr = robot.path[0]
                         make_start_at = robot.path[0].get_pos()
                         Spot.make_start(robot.path[0], robot.color_index)
