@@ -621,7 +621,7 @@ def main(win, width):
                         if timer_count == 0 :
                             robot.start.make_start(robot.color_index)
                     if all_finished:
-                        print("All robots has got to their goal, the run is finished.")
+                        print("All robots have reached their destinations, the simulation is complete.")
                         exit()
                     timer_count += 1
                     print(f"time: {timer_count}")
