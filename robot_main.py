@@ -630,8 +630,6 @@ def main(win, width):
                         # if there are points to avoid look if there are in our robot path, if not exit
                         # if there are in robot path calculate new path
                         if robot.points_to_avoid:
-                            val = avoidInTheWay(robot)
-                            PTA = robot.points_to_avoid
                             if avoidInTheWay(robot):
                                 ret_value = algorithm(lambda: draw(win, ROWS, width), Robot_List[i], False)
                                 if Robot_List[i].path and Robot_List[i].path[0] != Robot_List[i].curr and timer_count == 1 or ret_value == False:
