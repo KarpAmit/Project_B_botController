@@ -137,14 +137,21 @@ class Robot:
                     points_inside.append((row, col))
         return points_inside
 
-    def check_circle(self, search_list):
+    def check_circle(self, search_list,Robot_List,priority):
         # Given search_list return all the suspition points
-        return_list = []
+        return_list = {}
         for i, pos in enumerate(search_list):
             spot = get_spot(pos)
             if spot.color != WHITE and spot.color != BLACK and spot.color != RED and spot.color not in self.color_index.color_list() and spot.color not in STOP_COLORS:
-                return_list.append(spot)
-        return return_list
+                #return_list.append(spot)
+                return_list[pos] = spot
+            for robot in Robot_List:
+                if priority == robot.priority:
+                    continue
+                if pos == robot.curr.get_pos():
+                    spot.color =  robot.color_index.start_color
+                    return_list[pos] = spot
+        return list(return_list.values())
 
     def lookat(self, lookat_list, search_list):
         # Given the search_list and current robot that nearby, return the new robots nearby and their current location
@@ -366,7 +373,7 @@ def avoidInTheWay(robot):
             if robot.path[dist].row == avoid_cor[0] and robot.path[dist].col == avoid_cor[1]:
                 return True
             dist -=1 #Sometimes the other robot already did its move
-            if robot.path[dist].row == avoid_cor[0] and robot.path[dist].col == avoid_cor[1] and robot.priority != 0:
+            if robot.path[dist].row == avoid_cor[0] and robot.path[dist].col == avoid_cor[1]:
                 return True
     return False
 
@@ -475,19 +482,21 @@ def get_non_diagonal_neighbors(x, y):
     valid_neighbors = [(i, j) for i, j in neighbors if 0 <= i < 20 and 0 <= j < 20]
     return valid_neighbors
 
-def update_rad(robot):
+def update_rad(robot,Robot_List):
     # This function get a robot, and generate its radiud
     # Later the function search for other robots in the circle, and than check if already saw the robot or not to generate gradient
     # Finaly the function add PTA to the robot
     robot.impact_rad_points = robot.generate_circle(robot.curr, robot.impact_rad)
     robot.impact_points = robot.points_inside_circle(robot.curr, robot.impact_rad)
-    robot.impact_collision = robot.check_circle(robot.impact_points)
+    robot.impact_collision = robot.check_circle(robot.impact_points,Robot_List,robot.priority)
     robot.impact_lookat = robot.lookat(robot.impact_lookat, robot.impact_collision)
     for i, spot in enumerate(robot.impact_lookat):
         death_spots = get_non_diagonal_neighbors(spot.points[-1].get_pos()[0],spot.points[-1].get_pos()[1])
         if len(spot.points) > 1:
             if calc_grad(spot.points) == "STAY":
-                robot.points_to_avoid = merge_points_to_avoid([spot.points[-1].get_pos(),spot.points[-1].get_pos()],robot.points_to_avoid)
+                pos = spot.points[0].get_pos()
+                points_to_avoid = [[pos], get_non_diagonal_neighbors(pos[0], pos[1])]
+                robot.points_to_avoid = merge_points_to_avoid(points_to_avoid, robot.points_to_avoid)
                 continue
                 # In case there is gradient than get the top PTA by using probability
             robot.impact_lookat[i].prob = probability([0.75, 0.05, 0.1], calc_grad(spot.points),spot.points[-1].get_pos(), 3, TOP_PERCENTAGE)
@@ -609,7 +618,6 @@ def main(win, width):
                     for robot in Robot_List: #This section check if all robots has reached to their end spot and if sor end the run
                         if robot.curr != robot.end:
                             all_finished = False
-                        Spot.make_end(robot.path[-1], robot.color_index)
                         if timer_count == 0 :
                             robot.start.make_start(robot.color_index)
                     if all_finished:
@@ -618,18 +626,19 @@ def main(win, width):
                     timer_count += 1
                     print(f"time: {timer_count}")
                     for i, robot in enumerate(Robot_List):
-                        update_rad(robot)
+                        update_rad(robot,Robot_List)
                         # if there are points to avoid look if there are in our robot path, if not exit
                         # if there are in robot path calculate new path
                         if robot.points_to_avoid:
+                            val = avoidInTheWay(robot)
+                            PTA = robot.points_to_avoid
                             if avoidInTheWay(robot):
                                 ret_value = algorithm(lambda: draw(win, ROWS, width), Robot_List[i], False)
                                 if Robot_List[i].path and Robot_List[i].path[0] != Robot_List[i].curr and timer_count == 1 or ret_value == False:
                                     Robot_List[i].path.insert(0, Robot_List[i].curr)
                             robot.points_to_avoid = ""  #Delete old PTA
+                        Spot.reset(robot.curr)
                         robot.curr = robot.path[0]
-                        make_start_at = robot.path[0].get_pos()
-                        Spot.make_start(robot.path[0], robot.color_index)
                         Spot.make_start(robot.curr, robot.color_index)
                         Spot.make_end(robot.path[-1], robot.color_index)
                         if robot.curr == robot.end:
