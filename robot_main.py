@@ -640,7 +640,7 @@ def main(win, width):
                         Spot.make_start(robot.curr, robot.color_index)
                         Spot.make_end(robot.path[-1], robot.color_index)
                         if robot.curr == robot.end:
-                            print(f"Robot {i+1} Ended course")
+                            print(f"Robot {i+1} has finished its route.")
                             SIMULATE = False
                         if len(robot.path[1:]) > 0:
                             robot.path = robot.path[1:]
