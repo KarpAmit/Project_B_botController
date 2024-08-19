@@ -626,6 +626,9 @@ def main(win, width):
                     timer_count += 1
                     print(f"time: {timer_count}")
                     for i, robot in enumerate(Robot_List):
+                        if robot.curr == robot.end:
+                            print(f"Robot {i + 1} has finished its route.")
+                            continue
                         update_rad(robot,Robot_List)
                         # if there are points to avoid look if there are in our robot path, if not exit
                         # if there are in robot path calculate new path
